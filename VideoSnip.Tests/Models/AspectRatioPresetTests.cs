@@ -56,8 +56,8 @@ public class AspectRatioPresetTests
     [Fact]
     public void Presets_FixedSizePresets_HaveCorrectDimensions()
     {
-        var preset1080p = AspectRatioPreset.Presets.First(p => p.Name == "1920x1080");
-        var preset720p = AspectRatioPreset.Presets.First(p => p.Name == "1280x720");
+        var preset1080p = AspectRatioPreset.Presets.First(p => p.Name.StartsWith("1920x1080"));
+        var preset720p = AspectRatioPreset.Presets.First(p => p.Name.StartsWith("1280x720"));
 
         Assert.Equal(1920, preset1080p.FixedWidth);
         Assert.Equal(1080, preset1080p.FixedHeight);
@@ -68,7 +68,7 @@ public class AspectRatioPresetTests
     [Fact]
     public void Presets_Count_IsExpected()
     {
-        // Free, 16:9, 4:3, 1:1, 9:16, 3840x2160 (4K), 1920x1080, 1280x720, 800x600
-        Assert.Equal(9, AspectRatioPreset.Presets.Length);
+        // Free + 5 aspect ratios + 6 resolutions (16:9) + 3 resolutions (4:3) = 15
+        Assert.Equal(15, AspectRatioPreset.Presets.Length);
     }
 }

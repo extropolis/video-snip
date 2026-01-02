@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:models="clr-namespace:VideoSnip.Models"
         Title="Video Snip"
-        Icon="icon.png"
+        Icon="icon.ico"
         SizeToContent="WidthAndHeight"
         MinWidth="550"
         WindowStyle="SingleBorderWindow"
@@ -162,7 +162,6 @@
     <Grid Margin="12,8">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto"/>
-            <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="1"/>
             <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="Auto"/>
@@ -173,12 +172,9 @@
             <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
 
-        <!-- App Icon -->
-        <Image Source="icon.png" Width="40" Height="40" Margin="0,0,8,0" VerticalAlignment="Center" Grid.Column="0"/>
-
         <!-- Window Button (standalone) -->
         <Button x:Name="BtnNewWindow"
-                Grid.Column="1"
+                Grid.Column="0"
                 Style="{StaticResource ToolbarButton}"
                 VerticalAlignment="Center"
                 Click="BtnNewWindow_Click"
@@ -190,11 +186,11 @@
         </Button>
 
         <!-- Separator -->
-        <Rectangle Grid.Column="2" Fill="#CCCCCC" Width="1" Margin="4,6" VerticalAlignment="Stretch"/>
+        <Rectangle Grid.Column="1" Fill="#CCCCCC" Width="1" Margin="4,6" VerticalAlignment="Stretch"/>
 
         <!-- Region Button (adjacent to aspect ratio) -->
         <Button x:Name="BtnNewRegion"
-                Grid.Column="3"
+                Grid.Column="2"
                 Style="{StaticResource ToolbarButton}"
                 VerticalAlignment="Center"
                 Click="BtnNewRegion_Click"
@@ -207,7 +203,7 @@
 
         <!-- Aspect Ratio Dropdown (right next to Region) -->
         <ComboBox x:Name="AspectRatioCombo"
-                  Grid.Column="4"
+                  Grid.Column="3"
                   Style="{StaticResource ToolbarComboBox}"
                   Width="130"
                   Height="28"
@@ -217,11 +213,11 @@
         </ComboBox>
 
         <!-- Separator -->
-        <Rectangle Grid.Column="5" Fill="#CCCCCC" Width="1" Margin="4,6" VerticalAlignment="Stretch"/>
+        <Rectangle Grid.Column="4" Fill="#CCCCCC" Width="1" Margin="4,6" VerticalAlignment="Stretch"/>
 
         <!-- Pause Button -->
         <Button x:Name="BtnPause"
-                Grid.Column="6"
+                Grid.Column="5"
                 Style="{StaticResource ToolbarButton}"
                 VerticalAlignment="Center"
                 Click="BtnPause_Click"
@@ -235,7 +231,7 @@
 
         <!-- Stop Button -->
         <Button x:Name="BtnStop"
-                Grid.Column="7"
+                Grid.Column="6"
                 Style="{StaticResource StopButton}"
                 VerticalAlignment="Center"
                 Click="BtnStop_Click"
@@ -249,7 +245,7 @@
 
         <!-- Duration Display -->
         <TextBlock x:Name="DurationText"
-                   Grid.Column="8"
+                   Grid.Column="7"
                    Text=""
                    Foreground="#D32F2F"
                    FontFamily="Consolas"
@@ -259,10 +255,11 @@
 
         <!-- Recording Indicator -->
         <Ellipse x:Name="RecordingIndicator"
-                 Grid.Column="9"
+                 Grid.Column="8"
                  Width="10" Height="10"
                  Fill="#FF4444"
                  Visibility="Collapsed"
                  Margin="0,0,8,0"/>
+
     </Grid>
 </Window>

@@ -1,8 +1,11 @@
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using Hardcodet.Wpf.TaskbarNotification;
 using Microsoft.Win32;
 using VideoSnip.Models;
 using VideoSnip.Services;
@@ -14,6 +17,7 @@ public partial class MainWindow : Window
 {
     private readonly RecordingController _recordingController;
     private readonly DispatcherTimer _blinkTimer;
+    private TaskbarIcon? _trayIcon;
     private bool _blinkState;
     private bool _isPaused;
 
@@ -43,6 +47,51 @@ public partial class MainWindow : Window
 
         // Set up keyboard shortcuts
         KeyDown += MainWindow_KeyDown;
+
+        // Initialize system tray icon
+        InitializeTrayIcon();
+    }
+
+    private void InitializeTrayIcon()
+    {
+        try
+        {
+            _trayIcon = new TaskbarIcon
+            {
+                ToolTipText = "Video Snip - Right-click for options",
+                IconSource = new BitmapImage(new Uri("pack://application:,,,/icon.ico", UriKind.Absolute))
+            };
+
+            // Create context menu
+            var contextMenu = new ContextMenu();
+
+            var recordRegionItem = new MenuItem { Header = "Record Region", FontWeight = FontWeights.SemiBold };
+            recordRegionItem.Click += TrayMenu_RecordRegion_Click;
+            contextMenu.Items.Add(recordRegionItem);
+
+            var recordWindowItem = new MenuItem { Header = "Record Window" };
+            recordWindowItem.Click += TrayMenu_RecordWindow_Click;
+            contextMenu.Items.Add(recordWindowItem);
+
+            contextMenu.Items.Add(new Separator());
+
+            var showItem = new MenuItem { Header = "Show Video Snip" };
+            showItem.Click += TrayMenu_Show_Click;
+            contextMenu.Items.Add(showItem);
+
+            contextMenu.Items.Add(new Separator());
+
+            var exitItem = new MenuItem { Header = "Exit" };
+            exitItem.Click += TrayMenu_Exit_Click;
+            contextMenu.Items.Add(exitItem);
+
+            _trayIcon.ContextMenu = contextMenu;
+            _trayIcon.TrayMouseDoubleClick += TrayIcon_TrayMouseDoubleClick;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Failed to initialize tray icon: {ex.Message}");
+        }
     }
 
     private async void MainWindow_KeyDown(object sender, KeyEventArgs e)
@@ -277,6 +326,45 @@ public partial class MainWindow : Window
         return $"{len:0.##} {sizes[order]}";
     }
 
+    #region System Tray
+
+    private bool _isExiting;
+
+    private void TrayIcon_TrayMouseDoubleClick(object sender, RoutedEventArgs e)
+    {
+        ShowWindow();
+    }
+
+    private async void TrayMenu_RecordRegion_Click(object sender, RoutedEventArgs e)
+    {
+        await StartCapture(VideoCaptureMode.Region);
+    }
+
+    private async void TrayMenu_RecordWindow_Click(object sender, RoutedEventArgs e)
+    {
+        await StartCapture(VideoCaptureMode.Window);
+    }
+
+    private void TrayMenu_Show_Click(object sender, RoutedEventArgs e)
+    {
+        ShowWindow();
+    }
+
+    private void TrayMenu_Exit_Click(object sender, RoutedEventArgs e)
+    {
+        _isExiting = true;
+        Close();
+    }
+
+    private void ShowWindow()
+    {
+        Show();
+        WindowState = WindowState.Normal;
+        Activate();
+    }
+
+    #endregion
+
     protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
     {
         if (_recordingController.State == RecordingState.Recording)
@@ -296,11 +384,20 @@ public partial class MainWindow : Window
             _ = StopRecording();
         }
 
+        // Minimize to tray instead of closing (unless exiting)
+        if (!_isExiting)
+        {
+            e.Cancel = true;
+            Hide();
+            return;
+        }
+
         base.OnClosing(e);
     }
 
     protected override void OnClosed(EventArgs e)
     {
+        _trayIcon?.Dispose();
         _recordingController.Dispose();
         base.OnClosed(e);
     }
