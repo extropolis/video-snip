@@ -1,0 +1,104 @@
+<Window x:Class="VideoSnip.Views.RegionSelector"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Select Region"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False"
+        ResizeMode="NoResize"
+        WindowState="Maximized"
+        Cursor="Cross">
+
+    <Grid x:Name="MainGrid">
+        <!-- Semi-transparent overlay -->
+        <Rectangle x:Name="DimOverlay" Fill="#40000000" />
+
+        <!-- Canvas for drawing selection -->
+        <Canvas x:Name="SelectionCanvas">
+            <!-- Window highlight (for window mode) -->
+            <Border x:Name="WindowHighlight"
+                    Visibility="Collapsed"
+                    BorderBrush="#2196F3"
+                    BorderThickness="3"
+                    Background="#202196F3">
+                <TextBlock x:Name="WindowTitle"
+                           Foreground="White"
+                           FontSize="12"
+                           Padding="8,4"
+                           Background="#CC2196F3"
+                           VerticalAlignment="Top"
+                           HorizontalAlignment="Left"/>
+            </Border>
+
+            <!-- Selection rectangle (for region mode) -->
+            <Border x:Name="SelectionRect"
+                    Visibility="Collapsed"
+                    BorderBrush="#2196F3"
+                    BorderThickness="2"
+                    Background="#102196F3">
+                <Grid>
+                    <!-- Dimension display -->
+                    <Border Background="#CC2196F3"
+                            CornerRadius="3"
+                            Padding="6,3"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center">
+                        <TextBlock x:Name="DimensionText"
+                                   Foreground="White"
+                                   FontSize="14"
+                                   FontFamily="Consolas"/>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <!-- Preview rectangle for fixed resolution (follows mouse) -->
+            <Border x:Name="PreviewRect"
+                    Visibility="Collapsed"
+                    BorderBrush="#FF4444"
+                    BorderThickness="3"
+                    Background="#10FF4444">
+                <Grid>
+                    <!-- Dimension display -->
+                    <Border Background="#CCFF4444"
+                            CornerRadius="3"
+                            Padding="6,3"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center">
+                        <TextBlock x:Name="PreviewDimensionText"
+                                   Foreground="White"
+                                   FontSize="14"
+                                   FontWeight="Bold"
+                                   FontFamily="Consolas"/>
+                    </Border>
+                </Grid>
+            </Border>
+        </Canvas>
+
+        <!-- Instructions overlay -->
+        <Border x:Name="InstructionsPanel"
+                Background="#CC000000"
+                CornerRadius="8"
+                Padding="20,15"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Top"
+                Margin="0,50,0,0">
+            <StackPanel>
+                <TextBlock x:Name="ModeText"
+                           Foreground="White"
+                           FontSize="16"
+                           FontWeight="SemiBold"
+                           HorizontalAlignment="Center"/>
+                <TextBlock Foreground="#AAAAAA"
+                           FontSize="12"
+                           Margin="0,5,0,0"
+                           HorizontalAlignment="Center">
+                    <Run x:Name="InstructionText"/>
+                    <LineBreak/>
+                    <Run Text="Press ESC to cancel"/>
+                </TextBlock>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>

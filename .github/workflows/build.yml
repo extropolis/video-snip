@@ -1,0 +1,122 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  SOLUTION_PATH: 'VideoSnip.sln'
+  PROJECT_PATH: 'VideoSnip/VideoSnip.csproj'
+  TEST_PROJECT_PATH: 'VideoSnip.Tests/VideoSnip.Tests.csproj'
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Restore dependencies
+      run: dotnet restore ${{ env.SOLUTION_PATH }}
+
+    - name: Build
+      run: dotnet build ${{ env.SOLUTION_PATH }} --configuration Release --no-restore -p:Platform=x64
+
+    - name: Run tests
+      run: dotnet test ${{ env.TEST_PROJECT_PATH }} --configuration Release --no-build --verbosity normal -p:Platform=x64
+
+    - name: Publish (Framework-dependent)
+      run: |
+        dotnet publish ${{ env.PROJECT_PATH }} `
+          --configuration Release `
+          --output ./publish/framework-dependent `
+          -p:Platform=x64
+
+    - name: Publish (Self-contained)
+      run: |
+        dotnet publish ${{ env.PROJECT_PATH }} `
+          --configuration Release `
+          --runtime win-x64 `
+          --self-contained true `
+          --output ./publish/self-contained `
+          -p:Platform=x64 `
+          -p:PublishSingleFile=true `
+          -p:IncludeNativeLibrariesForSelfExtract=true
+
+    - name: Upload Framework-dependent artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: VideoSnip-framework-dependent
+        path: ./publish/framework-dependent/
+        retention-days: 30
+
+    - name: Upload Self-contained artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: VideoSnip-self-contained-win-x64
+        path: ./publish/self-contained/
+        retention-days: 30
+
+  release:
+    needs: build
+    runs-on: windows-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    permissions:
+      contents: write
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Restore dependencies
+      run: dotnet restore ${{ env.SOLUTION_PATH }}
+
+    - name: Get version from tag
+      id: get_version
+      shell: bash
+      run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+    - name: Build Release
+      run: |
+        dotnet publish ${{ env.PROJECT_PATH }} `
+          --configuration Release `
+          --runtime win-x64 `
+          --self-contained true `
+          --output ./release `
+          -p:Platform=x64 `
+          -p:PublishSingleFile=true `
+          -p:IncludeNativeLibrariesForSelfExtract=true `
+          -p:Version=${{ steps.get_version.outputs.VERSION }}
+
+    - name: Create ZIP archive
+      shell: pwsh
+      run: |
+        Compress-Archive -Path ./release/* -DestinationPath ./VideoSnip-${{ steps.get_version.outputs.VERSION }}-win-x64.zip
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        name: Video Snip v${{ steps.get_version.outputs.VERSION }}
+        draft: false
+        prerelease: ${{ contains(github.ref, '-beta') || contains(github.ref, '-alpha') || contains(github.ref, '-rc') }}
+        generate_release_notes: true
+        files: |
+          ./VideoSnip-${{ steps.get_version.outputs.VERSION }}-win-x64.zip
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

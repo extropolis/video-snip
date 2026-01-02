@@ -1,0 +1,261 @@
+<Window x:Class="VideoSnip.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:models="clr-namespace:VideoSnip.Models"
+        Title="Video Snip"
+        SizeToContent="WidthAndHeight"
+        MinWidth="550"
+        WindowStyle="SingleBorderWindow"
+        ResizeMode="NoResize"
+        Topmost="True"
+        WindowStartupLocation="CenterScreen"
+        Background="#2D2D30">
+
+    <Window.Resources>
+        <!-- Button Style -->
+        <Style x:Key="ToolbarButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="12,10"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="Medium"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border"
+                                Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}"
+                                CornerRadius="3">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#3E3E42"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#007ACC"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Foreground" Value="#555555"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ComboBoxItem Style for dropdown items -->
+        <Style x:Key="DarkComboBoxItem" TargetType="ComboBoxItem">
+            <Setter Property="Background" Value="#3E3E42"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBoxItem">
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#007ACC"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#007ACC"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ComboBox Style -->
+        <Style x:Key="ToolbarComboBox" TargetType="ComboBox">
+            <Setter Property="Background" Value="#4A4A4E"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="#5A5A5E"/>
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="Medium"/>
+            <Setter Property="ItemContainerStyle" Value="{StaticResource DarkComboBoxItem}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <ToggleButton x:Name="ToggleButton"
+                                          Background="{TemplateBinding Background}"
+                                          BorderBrush="{TemplateBinding BorderBrush}"
+                                          BorderThickness="{TemplateBinding BorderThickness}"
+                                          Focusable="False"
+                                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                          ClickMode="Press">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border Background="{TemplateBinding Background}"
+                                                BorderBrush="{TemplateBinding BorderBrush}"
+                                                BorderThickness="{TemplateBinding BorderThickness}"
+                                                CornerRadius="3">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition/>
+                                                    <ColumnDefinition Width="20"/>
+                                                </Grid.ColumnDefinitions>
+                                                <ContentPresenter Grid.Column="0"/>
+                                                <Path Grid.Column="1"
+                                                      Data="M 0 0 L 4 4 L 8 0 Z"
+                                                      Fill="#FFFFFF"
+                                                      HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center"/>
+                                            </Grid>
+                                        </Border>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+                            <TextBlock x:Name="ContentSite"
+                                       IsHitTestVisible="False"
+                                       Text="{Binding SelectedItem.Name, RelativeSource={RelativeSource TemplatedParent}}"
+                                       Foreground="{TemplateBinding Foreground}"
+                                       Margin="8,6,24,6"
+                                       VerticalAlignment="Center"
+                                       HorizontalAlignment="Left"/>
+                            <Popup x:Name="Popup"
+                                   Placement="Bottom"
+                                   IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   AllowsTransparency="True"
+                                   Focusable="False"
+                                   PopupAnimation="Slide">
+                                <Border x:Name="DropDownBorder"
+                                        Background="#3E3E42"
+                                        BorderBrush="#5A5A5E"
+                                        BorderThickness="1"
+                                        MinWidth="{TemplateBinding ActualWidth}"
+                                        MaxHeight="{TemplateBinding MaxDropDownHeight}">
+                                    <ScrollViewer>
+                                        <ItemsPresenter/>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Stop Button Style (Red) -->
+        <Style x:Key="StopButton" TargetType="Button" BasedOn="{StaticResource ToolbarButton}">
+            <Setter Property="Foreground" Value="#FF6B6B"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#4E2D2D"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="12,8">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="1"/>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="1"/>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Window Button (standalone) -->
+        <Button x:Name="BtnNewWindow"
+                Grid.Column="0"
+                Style="{StaticResource ToolbarButton}"
+                VerticalAlignment="Center"
+                Click="BtnNewWindow_Click"
+                ToolTip="Click on window to record">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Text="&#xE8A7;" FontFamily="Segoe MDL2 Assets" FontSize="16" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                <TextBlock Text="Window" VerticalAlignment="Center"/>
+            </StackPanel>
+        </Button>
+
+        <!-- Separator -->
+        <Rectangle Grid.Column="1" Fill="#555555" Width="1" Margin="4,6" VerticalAlignment="Stretch"/>
+
+        <!-- Region Button (adjacent to aspect ratio) -->
+        <Button x:Name="BtnNewRegion"
+                Grid.Column="2"
+                Style="{StaticResource ToolbarButton}"
+                VerticalAlignment="Center"
+                Click="BtnNewRegion_Click"
+                ToolTip="Select region to record (drag)">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Text="&#xE7C4;" FontFamily="Segoe MDL2 Assets" FontSize="16" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                <TextBlock Text="Region" VerticalAlignment="Center"/>
+            </StackPanel>
+        </Button>
+
+        <!-- Aspect Ratio Dropdown (right next to Region) -->
+        <ComboBox x:Name="AspectRatioCombo"
+                  Grid.Column="3"
+                  Style="{StaticResource ToolbarComboBox}"
+                  Width="130"
+                  Height="28"
+                  VerticalAlignment="Center"
+                  VerticalContentAlignment="Center"
+                  ToolTip="Aspect ratio preset (applies to Region mode)">
+        </ComboBox>
+
+        <!-- Separator -->
+        <Rectangle Grid.Column="4" Fill="#555555" Width="1" Margin="4,6" VerticalAlignment="Stretch"/>
+
+        <!-- Pause Button -->
+        <Button x:Name="BtnPause"
+                Grid.Column="5"
+                Style="{StaticResource ToolbarButton}"
+                VerticalAlignment="Center"
+                Click="BtnPause_Click"
+                IsEnabled="False"
+                ToolTip="Pause/Resume recording">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock x:Name="PauseIcon" Text="&#xE769;" FontFamily="Segoe MDL2 Assets" FontSize="16" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                <TextBlock x:Name="PauseText" Text="Pause" VerticalAlignment="Center"/>
+            </StackPanel>
+        </Button>
+
+        <!-- Stop Button -->
+        <Button x:Name="BtnStop"
+                Grid.Column="6"
+                Style="{StaticResource StopButton}"
+                VerticalAlignment="Center"
+                Click="BtnStop_Click"
+                IsEnabled="False"
+                ToolTip="Stop recording (Space/Enter/Esc)">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Text="&#xE71A;" FontFamily="Segoe MDL2 Assets" FontSize="16" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                <TextBlock Text="Stop" VerticalAlignment="Center"/>
+            </StackPanel>
+        </Button>
+
+        <!-- Duration Display -->
+        <TextBlock x:Name="DurationText"
+                   Grid.Column="7"
+                   Text=""
+                   Foreground="#FF6B6B"
+                   FontFamily="Consolas"
+                   FontSize="14"
+                   VerticalAlignment="Center"
+                   HorizontalAlignment="Center"/>
+
+        <!-- Recording Indicator -->
+        <Ellipse x:Name="RecordingIndicator"
+                 Grid.Column="8"
+                 Width="10" Height="10"
+                 Fill="#FF4444"
+                 Visibility="Collapsed"
+                 Margin="0,0,8,0"/>
+    </Grid>
+</Window>
