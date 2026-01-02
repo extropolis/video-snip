@@ -29,7 +29,14 @@ public partial class RegionSelector : Window
         _aspectRatio = aspectRatio;
 
         // Set up mode-specific UI
-        if (_mode == VideoCaptureMode.Region)
+        if (_mode == VideoCaptureMode.FullScreen)
+        {
+            InstructionsPanel.Visibility = Visibility.Collapsed;
+            FullScreenPanel.Visibility = Visibility.Visible;
+            // Resolution is set in ShowFullScreenSelection after DPI is available
+            Cursor = Cursors.Arrow;
+        }
+        else if (_mode == VideoCaptureMode.Region)
         {
             ModeText.Text = "Region Capture";
             // Update instruction based on whether fixed resolution is selected
@@ -85,6 +92,75 @@ public partial class RegionSelector : Window
         {
             SourceInitialized += (s, e) => MakeWindowTransparentToMouse();
         }
+
+        // For full screen mode, show the full screen selection immediately
+        if (_mode == VideoCaptureMode.FullScreen)
+        {
+            Loaded += (s, e) => ShowFullScreenSelection();
+        }
+    }
+
+    private void ShowFullScreenSelection()
+    {
+        // Use work area to exclude the taskbar
+        var workArea = SystemParameters.WorkArea;
+        var left = workArea.Left - SystemParameters.VirtualScreenLeft;
+        var top = workArea.Top - SystemParameters.VirtualScreenTop;
+
+        Canvas.SetLeft(SelectionRect, left);
+        Canvas.SetTop(SelectionRect, top);
+        SelectionRect.Width = workArea.Width;
+        SelectionRect.Height = workArea.Height;
+        SelectionRect.Visibility = Visibility.Visible;
+
+        // Show physical resolution in the panel
+        var dpiScale = VisualTreeHelper.GetDpi(this);
+        int physWidth = (int)(workArea.Width * dpiScale.DpiScaleX);
+        int physHeight = (int)(workArea.Height * dpiScale.DpiScaleY);
+        FullScreenResolution.Text = $"{physWidth} x {physHeight}";
+
+        // Hide the dimension text inside selection rect (shown in center panel instead)
+        DimensionText.Visibility = Visibility.Collapsed;
+    }
+
+    private void SelectFullScreen()
+    {
+        // Get physical screen coordinates (accounting for DPI scaling)
+        var physicalRect = GetPhysicalWorkArea();
+        System.Diagnostics.Debug.WriteLine($"Full screen physical rect: {physicalRect.X},{physicalRect.Y} {physicalRect.Width}x{physicalRect.Height}");
+
+        SelectedRegion = new RecordingRegion
+        {
+            X = physicalRect.X,
+            Y = physicalRect.Y,
+            Width = physicalRect.Width,
+            Height = physicalRect.Height,
+            Mode = VideoCaptureMode.FullScreen
+        };
+        DialogResult = true;
+        Close();
+    }
+
+    private (int X, int Y, int Width, int Height) GetPhysicalWorkArea()
+    {
+        // Get the primary screen's physical resolution using Win32 API
+        var hwnd = new WindowInteropHelper(this).Handle;
+
+        // Get DPI scaling factor
+        var dpiScale = VisualTreeHelper.GetDpi(this);
+        double scaleX = dpiScale.DpiScaleX;
+        double scaleY = dpiScale.DpiScaleY;
+
+        // Get logical work area and convert to physical pixels
+        var workArea = SystemParameters.WorkArea;
+        int physX = (int)(workArea.Left * scaleX);
+        int physY = (int)(workArea.Top * scaleY);
+        int physWidth = (int)(workArea.Width * scaleX);
+        int physHeight = (int)(workArea.Height * scaleY);
+
+        System.Diagnostics.Debug.WriteLine($"DPI Scale: {scaleX}x{scaleY}, Logical: {workArea.Width}x{workArea.Height}, Physical: {physWidth}x{physHeight}");
+
+        return (physX, physY, physWidth, physHeight);
     }
 
     private void MakeWindowTransparentToMouse()
@@ -184,6 +260,12 @@ public partial class RegionSelector : Window
     protected override void OnMouseLeftButtonDown(MouseButtonEventArgs e)
     {
         base.OnMouseLeftButtonDown(e);
+
+        if (_mode == VideoCaptureMode.FullScreen)
+        {
+            SelectFullScreen();
+            return;
+        }
 
         if (_mode == VideoCaptureMode.Window)
         {
@@ -357,6 +439,10 @@ public partial class RegionSelector : Window
         {
             DialogResult = false;
             Close();
+        }
+        else if (_mode == VideoCaptureMode.FullScreen && (e.Key == Key.Enter || e.Key == Key.Space))
+        {
+            SelectFullScreen();
         }
     }
 

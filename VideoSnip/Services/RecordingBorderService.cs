@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 using VideoSnip.Models;
 
 namespace VideoSnip.Services;
@@ -11,10 +12,11 @@ public class RecordingBorderService : IDisposable
     private Window? _borderWindow;
     private bool _disposed;
     private const int BorderThickness = 3;
+    private DispatcherTimer? _topmostTimer;
 
     public void ShowBorder(RecordingRegion region)
     {
-        // Create a transparent window that covers the recording region with a red border
+        // Create 4 separate border windows (top, bottom, left, right) to avoid off-screen issues
         _borderWindow = new Window
         {
             WindowStyle = WindowStyle.None,
@@ -23,26 +25,75 @@ public class RecordingBorderService : IDisposable
             Topmost = true,
             ShowInTaskbar = false,
             IsHitTestVisible = false,
-            Left = region.X - BorderThickness,
-            Top = region.Y - BorderThickness,
-            Width = region.Width + (BorderThickness * 2),
-            Height = region.Height + (BorderThickness * 2),
+            Left = region.X,
+            Top = region.Y,
+            Width = region.Width,
+            Height = region.Height,
             ResizeMode = ResizeMode.NoResize
         };
 
-        var border = new Border
-        {
-            BorderBrush = new SolidColorBrush(Color.FromRgb(255, 68, 68)), // Red border
-            BorderThickness = new Thickness(BorderThickness),
-            Background = Brushes.Transparent
-        };
+        // Use a Grid with 4 rectangles for the border (inside the region)
+        var grid = new Grid();
 
-        _borderWindow.Content = border;
+        // Top border
+        var topBorder = new Rectangle
+        {
+            Fill = new SolidColorBrush(Color.FromRgb(255, 68, 68)),
+            Height = BorderThickness,
+            VerticalAlignment = VerticalAlignment.Top
+        };
+        grid.Children.Add(topBorder);
+
+        // Bottom border
+        var bottomBorder = new Rectangle
+        {
+            Fill = new SolidColorBrush(Color.FromRgb(255, 68, 68)),
+            Height = BorderThickness,
+            VerticalAlignment = VerticalAlignment.Bottom
+        };
+        grid.Children.Add(bottomBorder);
+
+        // Left border
+        var leftBorder = new Rectangle
+        {
+            Fill = new SolidColorBrush(Color.FromRgb(255, 68, 68)),
+            Width = BorderThickness,
+            HorizontalAlignment = HorizontalAlignment.Left
+        };
+        grid.Children.Add(leftBorder);
+
+        // Right border
+        var rightBorder = new Rectangle
+        {
+            Fill = new SolidColorBrush(Color.FromRgb(255, 68, 68)),
+            Width = BorderThickness,
+            HorizontalAlignment = HorizontalAlignment.Right
+        };
+        grid.Children.Add(rightBorder);
+
+        _borderWindow.Content = grid;
         _borderWindow.Show();
+
+        // Timer to keep the border window on top (WPF Topmost can lose effect)
+        _topmostTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(500)
+        };
+        _topmostTimer.Tick += (s, e) =>
+        {
+            if (_borderWindow != null && _borderWindow.IsVisible)
+            {
+                _borderWindow.Topmost = false;
+                _borderWindow.Topmost = true;
+            }
+        };
+        _topmostTimer.Start();
     }
 
     public void HideBorder()
     {
+        _topmostTimer?.Stop();
+        _topmostTimer = null;
         _borderWindow?.Close();
         _borderWindow = null;
     }

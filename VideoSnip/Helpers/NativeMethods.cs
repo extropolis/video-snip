@@ -56,6 +56,12 @@ public static class NativeMethods
     [DllImport("dwmapi.dll")]
     public static extern int DwmGetWindowAttribute(IntPtr hwnd, int dwAttribute, out RECT pvAttribute, int cbAttribute);
 
+    [DllImport("user32.dll")]
+    public static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
+
+    [DllImport("user32.dll")]
+    public static extern bool UnregisterHotKey(IntPtr hWnd, int id);
+
     public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
 
     public const uint GA_ROOT = 2;
@@ -63,6 +69,23 @@ public static class NativeMethods
     public const int DWMWA_EXTENDED_FRAME_BOUNDS = 9;
     public const int GWL_EXSTYLE = -20;
     public const int WS_EX_TRANSPARENT = 0x00000020;
+
+    // Hotkey modifiers
+    public const uint MOD_ALT = 0x0001;
+    public const uint MOD_CONTROL = 0x0002;
+    public const uint MOD_SHIFT = 0x0004;
+    public const uint MOD_NOREPEAT = 0x4000;
+
+    // Virtual key codes
+    public const uint VK_S = 0x53;
+    public const uint VK_P = 0x50;
+
+    // Hotkey IDs
+    public const int HOTKEY_STOP = 1;
+    public const int HOTKEY_PAUSE = 2;
+
+    // Windows messages
+    public const int WM_HOTKEY = 0x0312;
 
     [StructLayout(LayoutKind.Sequential)]
     public struct POINT

@@ -4,6 +4,7 @@ namespace VideoSnip.Models;
 
 public enum VideoCaptureMode
 {
+    FullScreen,
     Region,
     Window
 }

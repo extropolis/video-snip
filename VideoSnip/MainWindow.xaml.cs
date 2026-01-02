@@ -3,10 +3,12 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Hardcodet.Wpf.TaskbarNotification;
 using Microsoft.Win32;
+using VideoSnip.Helpers;
 using VideoSnip.Models;
 using VideoSnip.Services;
 using VideoSnip.Views;
@@ -20,6 +22,17 @@ public partial class MainWindow : Window
     private TaskbarIcon? _trayIcon;
     private bool _blinkState;
     private bool _isPaused;
+    private IntPtr _windowHandle;
+    private HwndSource? _hwndSource;
+    private VideoCaptureMode _currentCaptureMode;
+
+    // Tray menu items
+    private MenuItem? _trayRecordFullScreen;
+    private MenuItem? _trayRecordRegion;
+    private MenuItem? _trayRecordWindow;
+    private MenuItem? _trayPause;
+    private MenuItem? _trayStop;
+    private Separator? _trayRecordingSeparator;
 
     public MainWindow()
     {
@@ -48,6 +61,16 @@ public partial class MainWindow : Window
         // Set up keyboard shortcuts
         KeyDown += MainWindow_KeyDown;
 
+        // Minimize to tray instead of taskbar
+        StateChanged += (s, e) =>
+        {
+            if (WindowState == WindowState.Minimized)
+            {
+                Hide();
+                WindowState = WindowState.Normal;
+            }
+        };
+
         // Initialize system tray icon
         InitializeTrayIcon();
     }
@@ -65,13 +88,30 @@ public partial class MainWindow : Window
             // Create context menu
             var contextMenu = new ContextMenu();
 
-            var recordRegionItem = new MenuItem { Header = "Record Region", FontWeight = FontWeights.SemiBold };
-            recordRegionItem.Click += TrayMenu_RecordRegion_Click;
-            contextMenu.Items.Add(recordRegionItem);
+            // Recording controls (hidden by default, shown during recording)
+            _trayPause = new MenuItem { Header = "⏸  Pause Recording", FontWeight = FontWeights.SemiBold, Visibility = Visibility.Collapsed };
+            _trayPause.Click += TrayMenu_Pause_Click;
+            contextMenu.Items.Add(_trayPause);
 
-            var recordWindowItem = new MenuItem { Header = "Record Window" };
-            recordWindowItem.Click += TrayMenu_RecordWindow_Click;
-            contextMenu.Items.Add(recordWindowItem);
+            _trayStop = new MenuItem { Header = "⏹  Stop Recording", Visibility = Visibility.Collapsed };
+            _trayStop.Click += TrayMenu_Stop_Click;
+            contextMenu.Items.Add(_trayStop);
+
+            _trayRecordingSeparator = new Separator { Visibility = Visibility.Collapsed };
+            contextMenu.Items.Add(_trayRecordingSeparator);
+
+            // Record options (shown by default, hidden during recording)
+            _trayRecordFullScreen = new MenuItem { Header = "Record Full Screen", FontWeight = FontWeights.SemiBold };
+            _trayRecordFullScreen.Click += TrayMenu_RecordFullScreen_Click;
+            contextMenu.Items.Add(_trayRecordFullScreen);
+
+            _trayRecordRegion = new MenuItem { Header = "Record Region" };
+            _trayRecordRegion.Click += TrayMenu_RecordRegion_Click;
+            contextMenu.Items.Add(_trayRecordRegion);
+
+            _trayRecordWindow = new MenuItem { Header = "Record Window" };
+            _trayRecordWindow.Click += TrayMenu_RecordWindow_Click;
+            contextMenu.Items.Add(_trayRecordWindow);
 
             contextMenu.Items.Add(new Separator());
 
@@ -94,6 +134,51 @@ public partial class MainWindow : Window
         }
     }
 
+    private void UpdateTrayMenuForRecording(bool isRecording)
+    {
+        if (_trayIcon == null) return;
+
+        if (isRecording)
+        {
+            // Show recording controls
+            if (_trayPause != null) _trayPause.Visibility = Visibility.Visible;
+            if (_trayStop != null) _trayStop.Visibility = Visibility.Visible;
+            if (_trayRecordingSeparator != null) _trayRecordingSeparator.Visibility = Visibility.Visible;
+
+            // Hide record options
+            if (_trayRecordFullScreen != null) _trayRecordFullScreen.Visibility = Visibility.Collapsed;
+            if (_trayRecordRegion != null) _trayRecordRegion.Visibility = Visibility.Collapsed;
+            if (_trayRecordWindow != null) _trayRecordWindow.Visibility = Visibility.Collapsed;
+
+            _trayIcon.ToolTipText = "Video Snip - Recording...";
+        }
+        else
+        {
+            // Hide recording controls
+            if (_trayPause != null) _trayPause.Visibility = Visibility.Collapsed;
+            if (_trayStop != null) _trayStop.Visibility = Visibility.Collapsed;
+            if (_trayRecordingSeparator != null) _trayRecordingSeparator.Visibility = Visibility.Collapsed;
+
+            // Show record options
+            if (_trayRecordFullScreen != null) _trayRecordFullScreen.Visibility = Visibility.Visible;
+            if (_trayRecordRegion != null) _trayRecordRegion.Visibility = Visibility.Visible;
+            if (_trayRecordWindow != null) _trayRecordWindow.Visibility = Visibility.Visible;
+
+            _trayIcon.ToolTipText = "Video Snip - Right-click for options";
+        }
+
+        // Update pause button text
+        UpdateTrayPauseButton();
+    }
+
+    private void UpdateTrayPauseButton()
+    {
+        if (_trayPause != null)
+        {
+            _trayPause.Header = _isPaused ? "▶  Resume Recording" : "⏸  Pause Recording";
+        }
+    }
+
     private async void MainWindow_KeyDown(object sender, KeyEventArgs e)
     {
         if (_recordingController.State == RecordingState.Recording)
@@ -113,6 +198,9 @@ public partial class MainWindow : Window
             switch (state)
             {
                 case RecordingState.Idle:
+                    UnregisterGlobalHotkeys();
+                    UpdateTrayMenuForRecording(false);
+                    BtnFullScreen.IsEnabled = true;
                     BtnNewRegion.IsEnabled = true;
                     BtnNewWindow.IsEnabled = true;
                     AspectRatioCombo.IsEnabled = true;
@@ -131,6 +219,8 @@ public partial class MainWindow : Window
                     break;
 
                 case RecordingState.Recording:
+                    RegisterGlobalHotkeys();
+                    BtnFullScreen.IsEnabled = false;
                     BtnNewRegion.IsEnabled = false;
                     BtnNewWindow.IsEnabled = false;
                     AspectRatioCombo.IsEnabled = false;
@@ -138,7 +228,16 @@ public partial class MainWindow : Window
                     BtnStop.IsEnabled = true;
                     RecordingIndicator.Visibility = Visibility.Visible;
                     _blinkTimer.Start();
-                    Show();
+                    // Only minimize to tray for full screen recording
+                    if (_currentCaptureMode == VideoCaptureMode.FullScreen)
+                    {
+                        Hide();
+                    }
+                    else
+                    {
+                        Show();
+                    }
+                    UpdateTrayMenuForRecording(true);
                     break;
 
                 case RecordingState.Stopping:
@@ -158,6 +257,11 @@ public partial class MainWindow : Window
         });
     }
 
+    private async void BtnFullScreen_Click(object sender, RoutedEventArgs e)
+    {
+        await StartCapture(VideoCaptureMode.FullScreen);
+    }
+
     private async void BtnNewRegion_Click(object sender, RoutedEventArgs e)
     {
         await StartCapture(VideoCaptureMode.Region);
@@ -170,6 +274,7 @@ public partial class MainWindow : Window
 
     private async Task StartCapture(VideoCaptureMode mode)
     {
+        _currentCaptureMode = mode;
         var aspectRatio = AspectRatioCombo.SelectedItem as AspectRatioPreset;
 
         // Show region selector
@@ -245,12 +350,21 @@ public partial class MainWindow : Window
         await StopRecording();
     }
 
+    private void BtnExit_Click(object sender, RoutedEventArgs e)
+    {
+        _isExiting = true;
+        Close();
+    }
+
     private async Task StopRecording()
     {
         var recordingResult = await _recordingController.StopRecordingAsync();
 
         if (recordingResult != null && File.Exists(recordingResult.TempFilePath))
         {
+            // Wait for file to be ready (not locked)
+            await WaitForFileReady(recordingResult.TempFilePath);
+
             // Show Save File dialog
             var saveDialog = new SaveFileDialog
             {
@@ -266,12 +380,54 @@ public partial class MainWindow : Window
             {
                 try
                 {
-                    // Move temp file to selected location
+                    // Move temp file to selected location (with retry for file lock)
                     if (File.Exists(saveDialog.FileName))
                     {
                         File.Delete(saveDialog.FileName);
                     }
-                    File.Move(recordingResult.TempFilePath, saveDialog.FileName);
+
+                    // Use FileStream with sharing to handle any lingering handles
+                    const int maxRetries = 10;
+                    Exception? lastException = null;
+                    bool success = false;
+                    for (int i = 0; i < maxRetries; i++)
+                    {
+                        try
+                        {
+                            // Use FileStream with ReadWrite sharing to allow reading even if file has other handles
+                            using (var sourceStream = new FileStream(
+                                recordingResult.TempFilePath,
+                                FileMode.Open,
+                                FileAccess.Read,
+                                FileShare.ReadWrite | FileShare.Delete))
+                            using (var destStream = new FileStream(
+                                saveDialog.FileName,
+                                FileMode.Create,
+                                FileAccess.Write,
+                                FileShare.None))
+                            {
+                                await sourceStream.CopyToAsync(destStream);
+                            }
+                            success = true;
+
+                            // Try to delete temp file (may fail, that's ok)
+                            try { File.Delete(recordingResult.TempFilePath); } catch { }
+                            break;
+                        }
+                        catch (IOException ex) when (i < maxRetries - 1)
+                        {
+                            lastException = ex;
+                            // Force GC and wait before retry
+                            GC.Collect();
+                            GC.WaitForPendingFinalizers();
+                            await Task.Delay(300);
+                        }
+                    }
+
+                    if (!success && lastException != null)
+                    {
+                        throw lastException;
+                    }
 
                     // Get file size
                     var fileInfo = new FileInfo(saveDialog.FileName);
@@ -326,6 +482,59 @@ public partial class MainWindow : Window
         return $"{len:0.##} {sizes[order]}";
     }
 
+    private static async Task WaitForFileReady(string filePath, int maxWaitMs = 30000)
+    {
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        long lastSize = -1;
+        int stableCount = 0;
+
+        Debug.WriteLine($"Waiting for file to be ready: {filePath}");
+
+        while (stopwatch.ElapsedMilliseconds < maxWaitMs)
+        {
+            try
+            {
+                // Check if file size is stable (not still being written to)
+                var fileInfo = new FileInfo(filePath);
+                long currentSize = fileInfo.Length;
+
+                if (currentSize == lastSize && currentSize > 0)
+                {
+                    stableCount++;
+                    // Wait for 3 consecutive stable checks before trying exclusive access
+                    if (stableCount >= 3)
+                    {
+                        // Try to open the file with exclusive access
+                        using (var fs = new FileStream(filePath, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+                        {
+                            Debug.WriteLine($"File ready after {stopwatch.ElapsedMilliseconds}ms, size: {currentSize}");
+                            return;
+                        }
+                    }
+                }
+                else
+                {
+                    stableCount = 0;
+                    Debug.WriteLine($"File still growing: {currentSize} bytes");
+                }
+
+                lastSize = currentSize;
+            }
+            catch (IOException ex)
+            {
+                Debug.WriteLine($"File still locked: {ex.Message}");
+                stableCount = 0;
+            }
+
+            // Force GC and wait
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            await Task.Delay(300);
+        }
+
+        Debug.WriteLine($"File not ready after {maxWaitMs}ms, proceeding anyway");
+    }
+
     #region System Tray
 
     private bool _isExiting;
@@ -333,6 +542,22 @@ public partial class MainWindow : Window
     private void TrayIcon_TrayMouseDoubleClick(object sender, RoutedEventArgs e)
     {
         ShowWindow();
+    }
+
+    private void TrayMenu_Pause_Click(object sender, RoutedEventArgs e)
+    {
+        BtnPause_Click(sender, e);
+        UpdateTrayPauseButton();
+    }
+
+    private async void TrayMenu_Stop_Click(object sender, RoutedEventArgs e)
+    {
+        await StopRecording();
+    }
+
+    private async void TrayMenu_RecordFullScreen_Click(object sender, RoutedEventArgs e)
+    {
+        await StartCapture(VideoCaptureMode.FullScreen);
     }
 
     private async void TrayMenu_RecordRegion_Click(object sender, RoutedEventArgs e)
@@ -367,7 +592,8 @@ public partial class MainWindow : Window
 
     protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
     {
-        if (_recordingController.State == RecordingState.Recording)
+        // If truly exiting and recording, prompt to stop
+        if (_isExiting && _recordingController.State == RecordingState.Recording)
         {
             var result = MessageBox.Show(
                 "Recording is in progress. Stop and exit?",
@@ -377,6 +603,7 @@ public partial class MainWindow : Window
 
             if (result != MessageBoxResult.Yes)
             {
+                _isExiting = false;
                 e.Cancel = true;
                 return;
             }
@@ -397,8 +624,60 @@ public partial class MainWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
+        UnregisterGlobalHotkeys();
+        _hwndSource?.RemoveHook(WndProc);
         _trayIcon?.Dispose();
         _recordingController.Dispose();
         base.OnClosed(e);
+    }
+
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+        _windowHandle = new WindowInteropHelper(this).Handle;
+        _hwndSource = HwndSource.FromHwnd(_windowHandle);
+        _hwndSource?.AddHook(WndProc);
+    }
+
+    private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (msg == NativeMethods.WM_HOTKEY)
+        {
+            int hotkeyId = wParam.ToInt32();
+            if (hotkeyId == NativeMethods.HOTKEY_STOP)
+            {
+                handled = true;
+                Dispatcher.BeginInvoke(async () => await StopRecording());
+            }
+            else if (hotkeyId == NativeMethods.HOTKEY_PAUSE)
+            {
+                handled = true;
+                Dispatcher.BeginInvoke(() => BtnPause_Click(this, new RoutedEventArgs()));
+            }
+        }
+        return IntPtr.Zero;
+    }
+
+    private void RegisterGlobalHotkeys()
+    {
+        if (_windowHandle == IntPtr.Zero) return;
+
+        // Ctrl+Shift+S for Stop
+        NativeMethods.RegisterHotKey(_windowHandle, NativeMethods.HOTKEY_STOP,
+            NativeMethods.MOD_CONTROL | NativeMethods.MOD_SHIFT | NativeMethods.MOD_NOREPEAT,
+            NativeMethods.VK_S);
+
+        // Ctrl+Shift+P for Pause
+        NativeMethods.RegisterHotKey(_windowHandle, NativeMethods.HOTKEY_PAUSE,
+            NativeMethods.MOD_CONTROL | NativeMethods.MOD_SHIFT | NativeMethods.MOD_NOREPEAT,
+            NativeMethods.VK_P);
+    }
+
+    private void UnregisterGlobalHotkeys()
+    {
+        if (_windowHandle == IntPtr.Zero) return;
+
+        NativeMethods.UnregisterHotKey(_windowHandle, NativeMethods.HOTKEY_STOP);
+        NativeMethods.UnregisterHotKey(_windowHandle, NativeMethods.HOTKEY_PAUSE);
     }
 }

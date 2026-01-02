@@ -7,7 +7,7 @@
         SizeToContent="WidthAndHeight"
         MinWidth="550"
         WindowStyle="SingleBorderWindow"
-        ResizeMode="NoResize"
+        ResizeMode="CanMinimize"
         Topmost="True"
         WindowStartupLocation="CenterScreen"
         Background="#F5F5F5">
@@ -164,17 +164,37 @@
             <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="1"/>
             <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="1"/>
+            <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="1"/>
             <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="*"/>
             <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="1"/>
+            <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
 
-        <!-- Window Button (standalone) -->
-        <Button x:Name="BtnNewWindow"
+        <!-- Full Screen Button (default/first option) -->
+        <Button x:Name="BtnFullScreen"
                 Grid.Column="0"
+                Style="{StaticResource ToolbarButton}"
+                VerticalAlignment="Center"
+                Click="BtnFullScreen_Click"
+                ToolTip="Record entire screen">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Text="&#xE740;" FontFamily="Segoe MDL2 Assets" FontSize="16" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                <TextBlock Text="Full Screen" VerticalAlignment="Center"/>
+            </StackPanel>
+        </Button>
+
+        <!-- Separator -->
+        <Rectangle Grid.Column="1" Fill="#CCCCCC" Width="1" Margin="4,6" VerticalAlignment="Stretch"/>
+
+        <!-- Window Button -->
+        <Button x:Name="BtnNewWindow"
+                Grid.Column="2"
                 Style="{StaticResource ToolbarButton}"
                 VerticalAlignment="Center"
                 Click="BtnNewWindow_Click"
@@ -186,11 +206,11 @@
         </Button>
 
         <!-- Separator -->
-        <Rectangle Grid.Column="1" Fill="#CCCCCC" Width="1" Margin="4,6" VerticalAlignment="Stretch"/>
+        <Rectangle Grid.Column="3" Fill="#CCCCCC" Width="1" Margin="4,6" VerticalAlignment="Stretch"/>
 
         <!-- Region Button (adjacent to aspect ratio) -->
         <Button x:Name="BtnNewRegion"
-                Grid.Column="2"
+                Grid.Column="4"
                 Style="{StaticResource ToolbarButton}"
                 VerticalAlignment="Center"
                 Click="BtnNewRegion_Click"
@@ -203,7 +223,7 @@
 
         <!-- Aspect Ratio Dropdown (right next to Region) -->
         <ComboBox x:Name="AspectRatioCombo"
-                  Grid.Column="3"
+                  Grid.Column="5"
                   Style="{StaticResource ToolbarComboBox}"
                   Width="130"
                   Height="28"
@@ -213,16 +233,16 @@
         </ComboBox>
 
         <!-- Separator -->
-        <Rectangle Grid.Column="4" Fill="#CCCCCC" Width="1" Margin="4,6" VerticalAlignment="Stretch"/>
+        <Rectangle Grid.Column="6" Fill="#CCCCCC" Width="1" Margin="4,6" VerticalAlignment="Stretch"/>
 
         <!-- Pause Button -->
         <Button x:Name="BtnPause"
-                Grid.Column="5"
+                Grid.Column="7"
                 Style="{StaticResource ToolbarButton}"
                 VerticalAlignment="Center"
                 Click="BtnPause_Click"
                 IsEnabled="False"
-                ToolTip="Pause/Resume recording">
+                ToolTip="Pause/Resume recording (Ctrl+Shift+P)">
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                 <TextBlock x:Name="PauseIcon" Text="&#xE769;" FontFamily="Segoe MDL2 Assets" FontSize="16" Margin="0,0,6,0" VerticalAlignment="Center"/>
                 <TextBlock x:Name="PauseText" Text="Pause" VerticalAlignment="Center"/>
@@ -231,12 +251,12 @@
 
         <!-- Stop Button -->
         <Button x:Name="BtnStop"
-                Grid.Column="6"
+                Grid.Column="8"
                 Style="{StaticResource StopButton}"
                 VerticalAlignment="Center"
                 Click="BtnStop_Click"
                 IsEnabled="False"
-                ToolTip="Stop recording (Space/Enter/Esc)">
+                ToolTip="Stop recording (Ctrl+Shift+S)">
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                 <TextBlock Text="&#xE71A;" FontFamily="Segoe MDL2 Assets" FontSize="16" Margin="0,0,6,0" VerticalAlignment="Center"/>
                 <TextBlock Text="Stop" VerticalAlignment="Center"/>
@@ -245,7 +265,7 @@
 
         <!-- Duration Display -->
         <TextBlock x:Name="DurationText"
-                   Grid.Column="7"
+                   Grid.Column="9"
                    Text=""
                    Foreground="#D32F2F"
                    FontFamily="Consolas"
@@ -255,11 +275,27 @@
 
         <!-- Recording Indicator -->
         <Ellipse x:Name="RecordingIndicator"
-                 Grid.Column="8"
+                 Grid.Column="10"
                  Width="10" Height="10"
                  Fill="#FF4444"
                  Visibility="Collapsed"
                  Margin="0,0,8,0"/>
+
+        <!-- Separator -->
+        <Rectangle Grid.Column="11" Fill="#CCCCCC" Width="1" Margin="4,6" VerticalAlignment="Stretch"/>
+
+        <!-- Exit Button -->
+        <Button x:Name="BtnExit"
+                Grid.Column="12"
+                Style="{StaticResource ToolbarButton}"
+                VerticalAlignment="Center"
+                Click="BtnExit_Click"
+                ToolTip="Exit application">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Text="&#xE7E8;" FontFamily="Segoe MDL2 Assets" FontSize="14" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                <TextBlock Text="Exit" VerticalAlignment="Center"/>
+            </StackPanel>
+        </Button>
 
     </Grid>
 </Window>

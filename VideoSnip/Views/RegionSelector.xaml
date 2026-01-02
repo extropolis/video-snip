@@ -35,12 +35,12 @@
             <!-- Selection rectangle (for region mode) -->
             <Border x:Name="SelectionRect"
                     Visibility="Collapsed"
-                    BorderBrush="#2196F3"
-                    BorderThickness="2"
-                    Background="#102196F3">
+                    BorderBrush="#FF4444"
+                    BorderThickness="3"
+                    Background="#20FF4444">
                 <Grid>
                     <!-- Dimension display -->
-                    <Border Background="#CC2196F3"
+                    <Border Background="#CCFF4444"
                             CornerRadius="3"
                             Padding="6,3"
                             HorizontalAlignment="Center"
@@ -76,7 +76,7 @@
             </Border>
         </Canvas>
 
-        <!-- Instructions overlay -->
+        <!-- Instructions overlay (for region/window mode) -->
         <Border x:Name="InstructionsPanel"
                 Background="#CC000000"
                 CornerRadius="8"
@@ -98,6 +98,59 @@
                     <LineBreak/>
                     <Run Text="Press ESC to cancel"/>
                 </TextBlock>
+            </StackPanel>
+        </Border>
+
+        <!-- Full Screen instructions overlay (centered) -->
+        <Border x:Name="FullScreenPanel"
+                Background="#CC000000"
+                CornerRadius="12"
+                Padding="30,25"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Visibility="Collapsed">
+            <StackPanel HorizontalAlignment="Center">
+                <TextBlock Text="Full Screen Capture"
+                           Foreground="White"
+                           FontSize="20"
+                           FontWeight="SemiBold"
+                           HorizontalAlignment="Center"/>
+                <TextBlock x:Name="FullScreenResolution"
+                           Foreground="#2196F3"
+                           FontSize="16"
+                           FontFamily="Consolas"
+                           Margin="0,8,0,0"
+                           HorizontalAlignment="Center"/>
+                <TextBlock Foreground="#AAAAAA"
+                           FontSize="13"
+                           Margin="0,15,0,0"
+                           HorizontalAlignment="Center"
+                           Text="Click or press Enter to start recording"/>
+                <Border Background="#40FFFFFF" Height="1" Margin="0,15,0,15"/>
+                <TextBlock Foreground="#888888"
+                           FontSize="12"
+                           HorizontalAlignment="Center">
+                    <Run Text="During recording:"/>
+                </TextBlock>
+                <TextBlock Foreground="#AAAAAA"
+                           FontSize="12"
+                           Margin="0,8,0,0"
+                           HorizontalAlignment="Center">
+                    <Run FontWeight="SemiBold" Foreground="White" Text="Ctrl+Shift+P"/>
+                    <Run Text="  Pause / Resume"/>
+                </TextBlock>
+                <TextBlock Foreground="#AAAAAA"
+                           FontSize="12"
+                           Margin="0,4,0,0"
+                           HorizontalAlignment="Center">
+                    <Run FontWeight="SemiBold" Foreground="White" Text="Ctrl+Shift+S"/>
+                    <Run Text="  Stop recording"/>
+                </TextBlock>
+                <TextBlock Foreground="#666666"
+                           FontSize="11"
+                           Margin="0,15,0,0"
+                           HorizontalAlignment="Center"
+                           Text="Press ESC to cancel"/>
             </StackPanel>
         </Border>
     </Grid>
