@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:models="clr-namespace:VideoSnip.Models"
         Title="Video Snip"
+        Icon="icon.png"
         SizeToContent="WidthAndHeight"
         MinWidth="550"
         WindowStyle="SingleBorderWindow"
