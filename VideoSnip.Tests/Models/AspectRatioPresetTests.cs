@@ -68,7 +68,7 @@ public class AspectRatioPresetTests
     [Fact]
     public void Presets_Count_IsExpected()
     {
-        // Free, 16:9, 4:3, 1:1, 9:16, 1920x1080, 1280x720, 800x600
-        Assert.Equal(8, AspectRatioPreset.Presets.Length);
+        // Free, 16:9, 4:3, 1:1, 9:16, 3840x2160 (4K), 1920x1080, 1280x720, 800x600
+        Assert.Equal(9, AspectRatioPreset.Presets.Length);
     }
 }
