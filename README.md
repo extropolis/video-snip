@@ -9,11 +9,14 @@ A lightweight, native Windows screen recording tool inspired by the Snipping Too
 
 ## Features
 
+- **Full Screen Capture** - Record your entire screen with one click
 - **Region Capture** - Drag to select any area of your screen
 - **Window Capture** - Click on any window to record it
+- **Ultrawide Monitor Support** - Works with 5K+ ultrawide displays (auto-scales for encoder compatibility)
 - **Fixed Resolution Presets** - Choose from common resolutions (4K, 1080p, 720p, etc.) with live preview
 - **Aspect Ratio Constraints** - Lock to 16:9, 4:3, 1:1, or 9:16
 - **Pause/Resume** - Pause recording and resume when ready
+- **Global Hotkeys** - Control recording from any application
 - **Recording Border** - Visual red border shows the recording area
 - **Minimal UI** - Clean, dark-themed toolbar that stays out of your way
 - **Hardware Accelerated** - Uses H.264 encoding for efficient, high-quality output
@@ -125,7 +128,9 @@ The output will be in `VideoSnip/bin/Release/net8.0-windows10.0.26100.0/win-x64/
 
 | Key | Action |
 |-----|--------|
-| `Space` / `Enter` / `Esc` | Stop recording |
+| `Ctrl+Shift+S` | Stop recording (global) |
+| `Ctrl+Shift+P` | Pause/Resume recording (global) |
+| `Space` / `Enter` / `Esc` | Stop recording (when app focused) |
 | `Esc` | Cancel region/window selection |
 
 ## Resolution Presets
@@ -147,8 +152,9 @@ The output will be in `VideoSnip/bin/Release/net8.0-windows10.0.26100.0/win-x64/
 - **Framework:** .NET 8.0 with WPF
 - **Video Encoding:** H.264 via [ScreenRecorderLib](https://github.com/sskodje/ScreenRecorderLib)
 - **Output Format:** MP4
-- **Bitrate:** 8 Mbps
-- **Frame Rate:** 30 FPS (variable)
+- **Bitrate:** Adaptive (8-20 Mbps based on resolution)
+- **Frame Rate:** 30 FPS (24 FPS for 4K+)
+- **Max Resolution:** 4096px width (ultrawide monitors auto-scale)
 - **Platform:** x64 only
 
 ## Project Structure
@@ -192,8 +198,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Roadmap
 
-- [ ] System tray integration
-- [ ] Global hotkeys
+- [x] System tray integration
+- [x] Global hotkeys
+- [x] Full screen capture
 - [ ] Audio recording option
 - [ ] GIF export
 - [ ] Auto-save option
