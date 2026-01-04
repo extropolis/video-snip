@@ -33,7 +33,7 @@ jobs:
       run: dotnet build ${{ env.SOLUTION_PATH }} --configuration Release --no-restore -p:Platform=x64
 
     - name: Run tests
-      run: dotnet test ${{ env.TEST_PROJECT_PATH }} --configuration Release --no-build --verbosity normal -p:Platform=x64
+      run: dotnet test ${{ env.TEST_PROJECT_PATH }} --configuration Release --no-build --verbosity normal -p:Platform=x64 --filter "Category!=RequiresDisplay"
 
     - name: Publish (Framework-dependent)
       run: |

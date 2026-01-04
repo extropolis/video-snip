@@ -18,6 +18,8 @@ public partial class RegionSelector : Window
     private IntPtr _hoveredWindow;
     private readonly DispatcherTimer? _windowTrackTimer;
     private readonly DispatcherTimer? _clickTimer;
+    private bool _isConfirmationMode;
+    private RecordingRegion? _pendingRegion;
 
     public RecordingRegion? SelectedRegion { get; private set; }
 
@@ -182,18 +184,40 @@ public partial class RegionSelector : Window
         // Check for left mouse button
         bool isMouseDown = (GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0;
 
-        if (!_wasMouseDown && isMouseDown && _hoveredWindow != IntPtr.Zero)
+        if (!_wasMouseDown && isMouseDown)
         {
-            // Mouse was just clicked, select the hovered window
-            SelectCurrentWindow();
+            if (_isConfirmationMode)
+            {
+                // Confirm selection
+                ConfirmSelection();
+            }
+            else if (_hoveredWindow != IntPtr.Zero)
+            {
+                // Mouse was just clicked, select the hovered window
+                SelectCurrentWindow();
+            }
         }
         _wasMouseDown = isMouseDown;
 
         // Check for ESC key
         if ((GetAsyncKeyState(VK_ESCAPE) & 0x8000) != 0)
         {
-            DialogResult = false;
-            Close();
+            if (_isConfirmationMode)
+            {
+                // Go back to selection mode
+                CancelConfirmation();
+            }
+            else
+            {
+                DialogResult = false;
+                Close();
+            }
+        }
+
+        // Check for Enter key
+        if ((GetAsyncKeyState(0x0D) & 0x8000) != 0 && _isConfirmationMode)
+        {
+            ConfirmSelection();
         }
     }
 
@@ -202,18 +226,78 @@ public partial class RegionSelector : Window
         if (_hoveredWindow == IntPtr.Zero) return;
 
         var rect = NativeMethods.GetWindowBounds(_hoveredWindow);
-        SelectedRegion = new RecordingRegion
+        var title = NativeMethods.GetWindowTitle(_hoveredWindow);
+
+        _pendingRegion = new RecordingRegion
         {
             X = rect.Left,
             Y = rect.Top,
             Width = rect.Width,
             Height = rect.Height,
             WindowHandle = _hoveredWindow,
-            WindowTitle = NativeMethods.GetWindowTitle(_hoveredWindow),
+            WindowTitle = title,
             Mode = VideoCaptureMode.Window
         };
-        DialogResult = true;
-        Close();
+
+        // Show confirmation panel
+        ShowWindowConfirmation(title, rect.Width, rect.Height);
+    }
+
+    private void ShowWindowConfirmation(string title, int width, int height)
+    {
+        _isConfirmationMode = true;
+
+        // Stop tracking windows
+        _windowTrackTimer?.Stop();
+
+        // Hide selection UI, keep the highlight visible
+        InstructionsPanel.Visibility = Visibility.Collapsed;
+        DimOverlay.Fill = new System.Windows.Media.SolidColorBrush(
+            System.Windows.Media.Color.FromArgb(0x80, 0, 0, 0)); // Darken more
+
+        // Show confirmation panel
+        WindowCaptureTitle.Text = string.IsNullOrEmpty(title) ? "(Untitled Window)" : title;
+        WindowCaptureResolution.Text = $"{width} x {height}";
+        WindowCapturePanel.Visibility = Visibility.Visible;
+    }
+
+    private void CancelConfirmation()
+    {
+        _isConfirmationMode = false;
+        _pendingRegion = null;
+
+        // Hide confirmation panels
+        WindowCapturePanel.Visibility = Visibility.Collapsed;
+        RegionCapturePanel.Visibility = Visibility.Collapsed;
+
+        // Reset overlay opacity
+        DimOverlay.Fill = new System.Windows.Media.SolidColorBrush(
+            System.Windows.Media.Color.FromArgb(0x40, 0, 0, 0));
+
+        if (_mode == VideoCaptureMode.Window)
+        {
+            // Resume tracking windows
+            _windowTrackTimer?.Start();
+            InstructionsPanel.Visibility = Visibility.Visible;
+            WindowHighlight.Visibility = Visibility.Collapsed;
+            _hoveredWindow = IntPtr.Zero;
+        }
+        else if (_mode == VideoCaptureMode.Region)
+        {
+            // Reset region selection
+            SelectionRect.Visibility = Visibility.Collapsed;
+            InstructionsPanel.Visibility = Visibility.Visible;
+        }
+    }
+
+    private void ConfirmSelection()
+    {
+        if (_pendingRegion != null)
+        {
+            SelectedRegion = _pendingRegion;
+            DialogResult = true;
+            Close();
+        }
     }
 
     private void WindowTrackTimer_Tick(object? sender, EventArgs e)
@@ -261,6 +345,13 @@ public partial class RegionSelector : Window
     {
         base.OnMouseLeftButtonDown(e);
 
+        // Handle confirmation mode click
+        if (_isConfirmationMode)
+        {
+            ConfirmSelection();
+            return;
+        }
+
         if (_mode == VideoCaptureMode.FullScreen)
         {
             SelectFullScreen();
@@ -269,27 +360,12 @@ public partial class RegionSelector : Window
 
         if (_mode == VideoCaptureMode.Window)
         {
-            // Select the hovered window
-            if (_hoveredWindow != IntPtr.Zero)
-            {
-                var rect = NativeMethods.GetWindowBounds(_hoveredWindow);
-                SelectedRegion = new RecordingRegion
-                {
-                    X = rect.Left,
-                    Y = rect.Top,
-                    Width = rect.Width,
-                    Height = rect.Height,
-                    WindowHandle = _hoveredWindow,
-                    WindowTitle = NativeMethods.GetWindowTitle(_hoveredWindow),
-                    Mode = VideoCaptureMode.Window
-                };
-                DialogResult = true;
-                Close();
-            }
+            // Window selection is handled by ClickTimer_Tick
+            return;
         }
         else if (_aspectRatio?.FixedWidth.HasValue == true)
         {
-            // Fixed resolution mode - click to place
+            // Fixed resolution mode - click to place, show confirmation
             var currentPoint = e.GetPosition(SelectionCanvas);
             var width = _aspectRatio.FixedWidth.Value;
             var height = _aspectRatio.FixedHeight!.Value;
@@ -299,7 +375,7 @@ public partial class RegionSelector : Window
             // Convert to screen coordinates
             var screenPoint = SelectionCanvas.PointToScreen(new Point(x, y));
 
-            SelectedRegion = new RecordingRegion
+            _pendingRegion = new RecordingRegion
             {
                 X = (int)screenPoint.X,
                 Y = (int)screenPoint.Y,
@@ -307,8 +383,17 @@ public partial class RegionSelector : Window
                 Height = height,
                 Mode = VideoCaptureMode.Region
             };
-            DialogResult = true;
-            Close();
+
+            // Update selection rect position and show it
+            Canvas.SetLeft(SelectionRect, x);
+            Canvas.SetTop(SelectionRect, y);
+            SelectionRect.Width = width;
+            SelectionRect.Height = height;
+            SelectionRect.Visibility = Visibility.Visible;
+            DimensionText.Visibility = Visibility.Collapsed;
+            PreviewRect.Visibility = Visibility.Collapsed;
+
+            ShowRegionConfirmation(width, height);
         }
         else
         {
@@ -326,6 +411,20 @@ public partial class RegionSelector : Window
 
             CaptureMouse();
         }
+    }
+
+    private void ShowRegionConfirmation(int width, int height)
+    {
+        _isConfirmationMode = true;
+
+        // Hide selection UI
+        InstructionsPanel.Visibility = Visibility.Collapsed;
+        DimOverlay.Fill = new System.Windows.Media.SolidColorBrush(
+            System.Windows.Media.Color.FromArgb(0x80, 0, 0, 0)); // Darken more
+
+        // Show confirmation panel
+        RegionCaptureResolution.Text = $"{width} x {height}";
+        RegionCapturePanel.Visibility = Visibility.Visible;
     }
 
     protected override void OnMouseMove(MouseEventArgs e)
@@ -411,7 +510,7 @@ public partial class RegionSelector : Window
                 // Convert to screen coordinates
                 var screenPoint = SelectionCanvas.PointToScreen(new Point(x, y));
 
-                SelectedRegion = new RecordingRegion
+                _pendingRegion = new RecordingRegion
                 {
                     X = (int)screenPoint.X,
                     Y = (int)screenPoint.Y,
@@ -419,8 +518,12 @@ public partial class RegionSelector : Window
                     Height = (int)height,
                     Mode = VideoCaptureMode.Region
                 };
-                DialogResult = true;
-                Close();
+
+                // Hide dimension text in selection rect (shown in panel)
+                DimensionText.Visibility = Visibility.Collapsed;
+
+                // Show confirmation panel
+                ShowRegionConfirmation((int)width, (int)height);
             }
             else
             {
@@ -437,12 +540,26 @@ public partial class RegionSelector : Window
 
         if (e.Key == Key.Escape)
         {
-            DialogResult = false;
-            Close();
+            if (_isConfirmationMode)
+            {
+                CancelConfirmation();
+            }
+            else
+            {
+                DialogResult = false;
+                Close();
+            }
         }
-        else if (_mode == VideoCaptureMode.FullScreen && (e.Key == Key.Enter || e.Key == Key.Space))
+        else if (e.Key == Key.Enter || e.Key == Key.Space)
         {
-            SelectFullScreen();
+            if (_isConfirmationMode)
+            {
+                ConfirmSelection();
+            }
+            else if (_mode == VideoCaptureMode.FullScreen)
+            {
+                SelectFullScreen();
+            }
         }
     }
 

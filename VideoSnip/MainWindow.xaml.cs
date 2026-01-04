@@ -25,6 +25,7 @@ public partial class MainWindow : Window
     private IntPtr _windowHandle;
     private HwndSource? _hwndSource;
     private VideoCaptureMode _currentCaptureMode;
+    private RecordingRegion? _currentRegion;
 
     // Tray menu items
     private MenuItem? _trayRecordFullScreen;
@@ -205,6 +206,7 @@ public partial class MainWindow : Window
                     BtnNewWindow.IsEnabled = true;
                     AspectRatioCombo.IsEnabled = true;
                     BtnPause.IsEnabled = false;
+                    BtnRestart.IsEnabled = false;
                     BtnStop.IsEnabled = false;
                     RecordingIndicator.Visibility = Visibility.Collapsed;
                     DurationText.Text = "";
@@ -225,6 +227,7 @@ public partial class MainWindow : Window
                     BtnNewWindow.IsEnabled = false;
                     AspectRatioCombo.IsEnabled = false;
                     BtnPause.IsEnabled = true;
+                    BtnRestart.IsEnabled = true;
                     BtnStop.IsEnabled = true;
                     RecordingIndicator.Visibility = Visibility.Visible;
                     _blinkTimer.Start();
@@ -242,6 +245,7 @@ public partial class MainWindow : Window
 
                 case RecordingState.Stopping:
                     BtnPause.IsEnabled = false;
+                    BtnRestart.IsEnabled = false;
                     BtnStop.IsEnabled = false;
                     _blinkTimer.Stop();
                     break;
@@ -287,6 +291,7 @@ public partial class MainWindow : Window
         if (result == true && selector.SelectedRegion != null)
         {
             var region = selector.SelectedRegion;
+            _currentRegion = region; // Store for restart functionality
 
             // Start recording
             var (success, errorDetail) = await _recordingController.StartRecordingAsync(region);
@@ -329,6 +334,41 @@ public partial class MainWindow : Window
             RecordingIndicator.Opacity = 0.5;
         }
         UpdatePauseButton();
+    }
+
+    private async void BtnRestart_Click(object sender, RoutedEventArgs e)
+    {
+        if (_currentRegion == null) return;
+
+        // Store the region before stopping (stop will clear it if we don't)
+        var regionToRestart = _currentRegion;
+
+        // Cancel the current recording (discard without saving)
+        await _recordingController.CancelRecordingAsync();
+
+        // Wait a bit for cleanup
+        await Task.Delay(200);
+
+        // Start a new recording with the same region
+        var (success, errorDetail) = await _recordingController.StartRecordingAsync(regionToRestart);
+
+        if (!success)
+        {
+            Show();
+            var message = "Failed to restart recording.";
+            if (!string.IsNullOrEmpty(errorDetail))
+                message += $"\n\nDetails: {errorDetail}";
+
+            MessageBox.Show(
+                message,
+                "Video Snip",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+        else
+        {
+            _currentRegion = regionToRestart;
+        }
     }
 
     private void UpdatePauseButton()

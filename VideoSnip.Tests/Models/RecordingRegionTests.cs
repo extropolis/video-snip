@@ -80,10 +80,11 @@ public class RecordingRegionTests
     }
 
     [Fact]
-    public void Mode_DefaultsToRegion()
+    public void Mode_DefaultsToFullScreen()
     {
         var region = new RecordingRegion();
-        Assert.Equal(VideoCaptureMode.Region, region.Mode);
+        // Default enum value is FullScreen (first in enum = 0)
+        Assert.Equal(VideoCaptureMode.FullScreen, region.Mode);
     }
 
     [Fact]

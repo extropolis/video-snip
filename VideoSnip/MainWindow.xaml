@@ -170,6 +170,7 @@
             <ColumnDefinition Width="1"/>
             <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="*"/>
             <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="1"/>
@@ -249,9 +250,23 @@
             </StackPanel>
         </Button>
 
+        <!-- Restart Button -->
+        <Button x:Name="BtnRestart"
+                Grid.Column="8"
+                Style="{StaticResource ToolbarButton}"
+                VerticalAlignment="Center"
+                Click="BtnRestart_Click"
+                IsEnabled="False"
+                ToolTip="Restart recording (discard current and start fresh)">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Text="&#xE72C;" FontFamily="Segoe MDL2 Assets" FontSize="16" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                <TextBlock Text="Restart" VerticalAlignment="Center"/>
+            </StackPanel>
+        </Button>
+
         <!-- Stop Button -->
         <Button x:Name="BtnStop"
-                Grid.Column="8"
+                Grid.Column="9"
                 Style="{StaticResource StopButton}"
                 VerticalAlignment="Center"
                 Click="BtnStop_Click"
@@ -265,7 +280,7 @@
 
         <!-- Duration Display -->
         <TextBlock x:Name="DurationText"
-                   Grid.Column="9"
+                   Grid.Column="10"
                    Text=""
                    Foreground="#D32F2F"
                    FontFamily="Consolas"
@@ -275,18 +290,18 @@
 
         <!-- Recording Indicator -->
         <Ellipse x:Name="RecordingIndicator"
-                 Grid.Column="10"
+                 Grid.Column="11"
                  Width="10" Height="10"
                  Fill="#FF4444"
                  Visibility="Collapsed"
                  Margin="0,0,8,0"/>
 
         <!-- Separator -->
-        <Rectangle Grid.Column="11" Fill="#CCCCCC" Width="1" Margin="4,6" VerticalAlignment="Stretch"/>
+        <Rectangle Grid.Column="12" Fill="#CCCCCC" Width="1" Margin="4,6" VerticalAlignment="Stretch"/>
 
         <!-- Exit Button -->
         <Button x:Name="BtnExit"
-                Grid.Column="12"
+                Grid.Column="13"
                 Style="{StaticResource ToolbarButton}"
                 VerticalAlignment="Center"
                 Click="BtnExit_Click"

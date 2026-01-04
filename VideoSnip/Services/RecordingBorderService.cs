@@ -1,8 +1,10 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using System.Windows.Threading;
+using VideoSnip.Helpers;
 using VideoSnip.Models;
 
 namespace VideoSnip.Services;
@@ -73,6 +75,10 @@ public class RecordingBorderService : IDisposable
 
         _borderWindow.Content = grid;
         _borderWindow.Show();
+
+        // Exclude the border window from screen capture so it's visible on screen but not in recordings
+        var hwnd = new WindowInteropHelper(_borderWindow).Handle;
+        NativeMethods.SetWindowDisplayAffinity(hwnd, NativeMethods.WDA_EXCLUDEFROMCAPTURE);
 
         // Timer to keep the border window on top (WPF Topmost can lose effect)
         _topmostTimer = new DispatcherTimer

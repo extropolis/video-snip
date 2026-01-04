@@ -6,7 +6,9 @@ namespace VideoSnip.Tests.Services;
 /// <summary>
 /// Tests to systematically determine what ScreenRecorderLib configurations work.
 /// These tests help identify encoder limitations and find working settings.
+/// NOTE: These tests require display/GPU hardware and cannot run on CI runners.
 /// </summary>
+[Trait("Category", "RequiresDisplay")]
 public class ScreenRecorderLibTests
 {
     private readonly string _testOutputFolder;

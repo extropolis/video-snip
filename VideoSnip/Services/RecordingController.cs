@@ -298,6 +298,53 @@ public class RecordingController : IDisposable
         _isPaused = false;
     }
 
+    /// <summary>
+    /// Cancels the current recording and discards the temp file without saving.
+    /// Used for restart functionality.
+    /// </summary>
+    public async Task CancelRecordingAsync()
+    {
+        if (State != RecordingState.Recording) return;
+
+        SetState(RecordingState.Stopping);
+        _durationTimer.Stop();
+
+        try
+        {
+            _recorder?.Stop();
+
+            // Brief wait for recording to stop
+            if (_recordingComplete != null)
+            {
+                await Task.WhenAny(_recordingComplete.Task, Task.Delay(5000));
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error cancelling recording: {ex.Message}");
+        }
+
+        // Dispose recorder
+        if (_recorder != null)
+        {
+            _recorder.OnRecordingComplete -= OnRecordingComplete;
+            _recorder.OnRecordingFailed -= OnRecordingFailed;
+            _recorder.OnStatusChanged -= OnStatusChanged;
+            _recorder.Dispose();
+            _recorder = null;
+        }
+
+        // Delete temp file
+        CleanupTempFile();
+
+        // Force garbage collection
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+
+        Cleanup();
+        SetState(RecordingState.Idle);
+    }
+
     public async Task<RecordingResult?> StopRecordingAsync()
     {
         if (State != RecordingState.Recording) return null;
