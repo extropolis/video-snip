@@ -246,7 +246,7 @@
                 ToolTip="Pause/Resume recording (Ctrl+Shift+P)">
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                 <TextBlock x:Name="PauseIcon" Text="&#xE769;" FontFamily="Segoe MDL2 Assets" FontSize="16" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                <TextBlock x:Name="PauseText" Text="Pause" VerticalAlignment="Center"/>
+                <TextBlock x:Name="PauseText" Text="Pause" Width="52" VerticalAlignment="Center"/>
             </StackPanel>
         </Button>
 

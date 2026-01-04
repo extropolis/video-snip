@@ -214,8 +214,9 @@ public partial class RegionSelector : Window
             }
         }
 
-        // Check for Enter key
-        if ((GetAsyncKeyState(0x0D) & 0x8000) != 0 && _isConfirmationMode)
+        // Check for Enter or Space key
+        if (_isConfirmationMode &&
+            ((GetAsyncKeyState(0x0D) & 0x8000) != 0 || (GetAsyncKeyState(0x20) & 0x8000) != 0))
         {
             ConfirmSelection();
         }
