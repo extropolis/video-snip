@@ -51,6 +51,16 @@ jobs:
           --output ./publish/self-contained `
           -p:Platform=x64
 
+    - name: Publish (Single-file)
+      run: |
+        dotnet publish ${{ env.PROJECT_PATH }} `
+          --configuration Release `
+          --runtime win-x64 `
+          --self-contained true `
+          --output ./publish/single-file `
+          -p:Platform=x64 `
+          -p:PublishSingleFile=true
+
     - name: Upload Framework-dependent artifact
       uses: actions/upload-artifact@v4
       with:
@@ -63,6 +73,13 @@ jobs:
       with:
         name: VideoSnip-self-contained-win-x64
         path: ./publish/self-contained/
+        retention-days: 30
+
+    - name: Upload Single-file artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: VideoSnip-single-file-win-x64
+        path: ./publish/single-file/
         retention-days: 30
 
   release:
@@ -90,7 +107,7 @@ jobs:
       shell: bash
       run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
-    - name: Build Release
+    - name: Build Release (Single-file)
       run: |
         dotnet publish ${{ env.PROJECT_PATH }} `
           --configuration Release `
@@ -98,6 +115,7 @@ jobs:
           --self-contained true `
           --output ./release `
           -p:Platform=x64 `
+          -p:PublishSingleFile=true `
           -p:Version=${{ steps.get_version.outputs.VERSION }}
 
     - name: Create ZIP archive
