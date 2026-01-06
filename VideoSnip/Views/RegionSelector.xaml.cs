@@ -20,6 +20,8 @@ public partial class RegionSelector : Window
     private readonly DispatcherTimer? _clickTimer;
     private bool _isConfirmationMode;
     private RecordingRegion? _pendingRegion;
+    private bool _isRepositionMode;
+    private Point _dragOffset;
 
     public RecordingRegion? SelectedRegion { get; private set; }
 
@@ -265,6 +267,7 @@ public partial class RegionSelector : Window
     private void CancelConfirmation()
     {
         _isConfirmationMode = false;
+        _isRepositionMode = false;
         _pendingRegion = null;
 
         // Hide confirmation panels
@@ -353,6 +356,20 @@ public partial class RegionSelector : Window
             return;
         }
 
+        // Handle reposition mode - start dragging to move the region
+        if (_isRepositionMode && _mode == VideoCaptureMode.Region)
+        {
+            var currentPoint = e.GetPosition(SelectionCanvas);
+            var rectX = Canvas.GetLeft(SelectionRect);
+            var rectY = Canvas.GetTop(SelectionRect);
+
+            // Store offset from click point to rect's top-left corner
+            _dragOffset = new Point(currentPoint.X - rectX, currentPoint.Y - rectY);
+            _isDragging = true;
+            CaptureMouse();
+            return;
+        }
+
         if (_mode == VideoCaptureMode.FullScreen)
         {
             SelectFullScreen();
@@ -366,35 +383,26 @@ public partial class RegionSelector : Window
         }
         else if (_aspectRatio?.FixedWidth.HasValue == true)
         {
-            // Fixed resolution mode - click to place, show confirmation
+            // Fixed resolution mode - start dragging to position
             var currentPoint = e.GetPosition(SelectionCanvas);
             var width = _aspectRatio.FixedWidth.Value;
             var height = _aspectRatio.FixedHeight!.Value;
             var x = currentPoint.X - width / 2;
             var y = currentPoint.Y - height / 2;
 
-            // Convert to screen coordinates
-            var screenPoint = SelectionCanvas.PointToScreen(new Point(x, y));
+            _isDragging = true;
+            InstructionsPanel.Visibility = Visibility.Collapsed;
+            PreviewRect.Visibility = Visibility.Collapsed;
 
-            _pendingRegion = new RecordingRegion
-            {
-                X = (int)screenPoint.X,
-                Y = (int)screenPoint.Y,
-                Width = width,
-                Height = height,
-                Mode = VideoCaptureMode.Region
-            };
-
-            // Update selection rect position and show it
+            // Show selection rect at current position
             Canvas.SetLeft(SelectionRect, x);
             Canvas.SetTop(SelectionRect, y);
             SelectionRect.Width = width;
             SelectionRect.Height = height;
             SelectionRect.Visibility = Visibility.Visible;
-            DimensionText.Visibility = Visibility.Collapsed;
-            PreviewRect.Visibility = Visibility.Collapsed;
+            DimensionText.Text = $"{width} x {height}";
 
-            ShowRegionConfirmation(width, height);
+            CaptureMouse();
         }
         else
         {
@@ -438,7 +446,31 @@ public partial class RegionSelector : Window
 
             if (_isDragging)
             {
-                UpdateSelectionRect(currentPoint);
+                if (_isRepositionMode)
+                {
+                    // Reposition mode - move the rect using the drag offset
+                    var x = currentPoint.X - _dragOffset.X;
+                    var y = currentPoint.Y - _dragOffset.Y;
+
+                    Canvas.SetLeft(SelectionRect, x);
+                    Canvas.SetTop(SelectionRect, y);
+                }
+                else if (_aspectRatio?.FixedWidth.HasValue == true)
+                {
+                    // Fixed resolution mode - move the rect centered on cursor
+                    var width = _aspectRatio.FixedWidth.Value;
+                    var height = _aspectRatio.FixedHeight!.Value;
+                    var x = currentPoint.X - width / 2;
+                    var y = currentPoint.Y - height / 2;
+
+                    Canvas.SetLeft(SelectionRect, x);
+                    Canvas.SetTop(SelectionRect, y);
+                }
+                else
+                {
+                    // Free-form or aspect ratio - resize from start point
+                    UpdateSelectionRect(currentPoint);
+                }
             }
             else if (_aspectRatio?.FixedWidth.HasValue == true)
             {
@@ -496,6 +528,34 @@ public partial class RegionSelector : Window
     {
         base.OnMouseLeftButtonUp(e);
 
+        // Handle reposition mode first - clicking confirms the position
+        if (_isRepositionMode && _mode == VideoCaptureMode.Region)
+        {
+            _isDragging = false;
+            ReleaseMouseCapture();
+
+            var x = Canvas.GetLeft(SelectionRect);
+            var y = Canvas.GetTop(SelectionRect);
+            var width = SelectionRect.Width;
+            var height = SelectionRect.Height;
+
+            var screenPoint = SelectionCanvas.PointToScreen(new Point(x, y));
+
+            _pendingRegion = new RecordingRegion
+            {
+                X = (int)screenPoint.X,
+                Y = (int)screenPoint.Y,
+                Width = (int)width,
+                Height = (int)height,
+                Mode = VideoCaptureMode.Region
+            };
+
+            _isRepositionMode = false;
+            DimensionText.Visibility = Visibility.Collapsed;
+            ShowRegionConfirmation((int)width, (int)height);
+            return;
+        }
+
         if (_isDragging && _mode == VideoCaptureMode.Region)
         {
             _isDragging = false;
@@ -508,6 +568,16 @@ public partial class RegionSelector : Window
 
             if (width > 10 && height > 10)
             {
+                // For free-form and aspect ratio regions (not fixed size), enter reposition mode
+                if (_aspectRatio?.FixedWidth.HasValue != true)
+                {
+                    _isRepositionMode = true;
+                    InstructionsPanel.Visibility = Visibility.Collapsed;
+                    // Update instruction to indicate repositioning is possible
+                    DimensionText.Text = $"{(int)width} x {(int)height} - drag to move, click to confirm";
+                    return;
+                }
+
                 // Convert to screen coordinates
                 var screenPoint = SelectionCanvas.PointToScreen(new Point(x, y));
 
@@ -545,6 +615,11 @@ public partial class RegionSelector : Window
             {
                 CancelConfirmation();
             }
+            else if (_isRepositionMode)
+            {
+                // Cancel reposition mode, go back to drawing
+                CancelConfirmation();
+            }
             else
             {
                 DialogResult = false;
@@ -556,6 +631,29 @@ public partial class RegionSelector : Window
             if (_isConfirmationMode)
             {
                 ConfirmSelection();
+            }
+            else if (_isRepositionMode)
+            {
+                // Confirm from reposition mode - show confirmation panel
+                var x = Canvas.GetLeft(SelectionRect);
+                var y = Canvas.GetTop(SelectionRect);
+                var width = SelectionRect.Width;
+                var height = SelectionRect.Height;
+
+                var screenPoint = SelectionCanvas.PointToScreen(new Point(x, y));
+
+                _pendingRegion = new RecordingRegion
+                {
+                    X = (int)screenPoint.X,
+                    Y = (int)screenPoint.Y,
+                    Width = (int)width,
+                    Height = (int)height,
+                    Mode = VideoCaptureMode.Region
+                };
+
+                _isRepositionMode = false;
+                DimensionText.Visibility = Visibility.Collapsed;
+                ShowRegionConfirmation((int)width, (int)height);
             }
             else if (_mode == VideoCaptureMode.FullScreen)
             {
